@@ -15,10 +15,12 @@
 #define TOTAL_EP                        3
 // Default Control Endpoint is 0 
 #define CTRL_EP                         0
-// BULK IN Endpoint is 1 
-#define MSC_BULK_IN_EP                  1
-// BULK OUT Endpoint is 2 
-#define MSC_BULK_OUT_EP                 2
+
+#define MSC_FIRST_ENDPOINT              pluggedEndpoint
+// BULK IN Endpoint
+#define MSC_BULK_IN_EP                  pluggedEndpoint
+// BULK OUT Endpoint 
+#define MSC_BULK_OUT_EP                 ((uint8_t)(pluggedEndpoint+1))
 // Control Endpoint size - 64 bytes 
 #define CTRL_EP_SIZE                    64
 // BULK IN/OUT Endpoint size - 64 bytes 

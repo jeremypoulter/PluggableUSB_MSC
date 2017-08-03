@@ -15,6 +15,7 @@
 */
 
 #include "usbmsc.h"
+#include "debug.h"
 
 /** Endpoint number of the Mass Storage device-to-host data IN endpoint. */
 #define MASS_STORAGE_IN_EPNUM          3	
@@ -43,6 +44,9 @@ MSC_ MassStorage;
 
 int MSC_::getInterface(uint8_t* interfaceNum)
 {
+	DBUGLN("getInterface");
+	DBUGVAR(*interfaceNum);
+
 	interfaceNum[0] += 1;	// uses 1 interfaces
 	MSCDescriptor _mscInterface =
 	{
@@ -55,6 +59,10 @@ int MSC_::getInterface(uint8_t* interfaceNum)
 
 bool MSC_::setup(USBSetup& setup)
 {
+	DBUGLN("setup");
+	DBUGVAR(setup.bmRequestType, HEX);
+	DBUGVAR(setup.wValueH, HEX);
+
 	//Support requests here if needed. Typically these are optional
 
 
@@ -63,7 +71,11 @@ bool MSC_::setup(USBSetup& setup)
 
 int MSC_::getDescriptor(USBSetup& setup)
 {
-		// Check if this is a HID Class Descriptor request
+	DBUGLN("getDescriptor");
+	DBUGVAR(setup.bmRequestType, HEX);
+	DBUGVAR(setup.wValueH, HEX);
+
+	// Check if this is a HID Class Descriptor request
 	if (setup.bmRequestType != REQUEST_DEVICETOHOST_STANDARD_INTERFACE) { return 0; }
 	if (setup.wValueH != 0x100) { return 0; }
 
