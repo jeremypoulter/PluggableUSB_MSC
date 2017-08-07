@@ -1,4 +1,4 @@
-/*
+/* 
 ** Copyright (c) 2015, Gary Grewal
 ** Permission to use, copy, modify, and/or distribute this software for
 ** any purpose with or without fee is hereby granted, provided that the
@@ -17,10 +17,10 @@
 #include "usbmsc.h"
 #include "debug.h"
 
-/** Endpoint number of the Mass Storage device-to-host data IN endpoint. */
+// * Endpoint number of the Mass Storage device-to-host data IN endpoint. */
 #define MASS_STORAGE_IN_EPNUM          3	
 
-/** Endpoint number of the Mass Storage host-to-device data OUT endpoint. */
+// * Endpoint number of the Mass Storage host-to-device data OUT endpoint. */
 #define MASS_STORAGE_OUT_EPNUM         4	
 
 #define MSC_INTERFACE 	pluggedInterface	// MSC Interface
@@ -33,6 +33,11 @@
 
 #define MSC_CLASS 0x8
 
+#define OUT_BANK                           0
+#define IN_BANK                            1
+
+#define COMPILER_WORD_ALIGNED         __attribute__((__aligned__(4)))
+
 //	DEVICE DESCRIPTOR
 //const DeviceDescriptor USB_DeviceDescriptorB = D_DEVICE(0xEF, 0x02, 0x01, 64, USB_VID, USB_PID, 0x100, IMANUFACTURER, IPRODUCT, ISERIAL, 1);
 //const DeviceDescriptor USB_DeviceDescriptor = D_DEVICE(0x00, 0x00, 0x00, 64, USB_VID, USB_PID, 0x100, IMANUFACTURER, IPRODUCT, ISERIAL, 1);
@@ -42,10 +47,15 @@ const	DeviceDescriptor USB_DeviceDescriptor = D_DEVICE(0x00, 0x00, 0x00, MSC_MAX
 
 MSC_ MassStorage;
 
+COMPILER_WORD_ALIGNED
+uint8_t getmaxlun[] = {
+	0x00,	 // 0 (since one LUN (SD card) is connected )
+};
+
 int MSC_::getInterface(uint8_t* interfaceNum)
 {
-	DBUGLN("getInterface");
-	DBUGVAR(*interfaceNum);
+	DBUG("getInterface: ");
+	DBUGLN(*interfaceNum);
 
 	interfaceNum[0] += 1;	// uses 1 interfaces
 	MSCDescriptor _mscInterface =
@@ -59,21 +69,48 @@ int MSC_::getInterface(uint8_t* interfaceNum)
 
 bool MSC_::setup(USBSetup& setup)
 {
-	DBUGLN("setup");
-	DBUGVAR(setup.bmRequestType, HEX);
-	DBUGVAR(setup.wValueH, HEX);
+	DBUG("setup: ");
+	DBUG(setup.bmRequestType, HEX);
+	DBUG(" ");
+	DBUGLN(setup.wValueH, HEX);
 
-	//Support requests here if needed. Typically these are optional
+	switch(setup.bmRequestType) 
+	{
+		// MSC class requests
+		// Get MaxLUN supported
+		case GET_MAX_LUN:
+			// wIndex should be interface number
+			if (setup.wValueH == 0 && setup.wIndex == 0 && setup.wLength == 1) {
+				USB_Send(CTRL_EP, getmaxlun, sizeof(getmaxlun));
+			} else {
+				//  Stall the request
+				USB_Stall(IN_BANK);
+			}
+			return true;
 
+		case MASS_STORAGE_RESET:
+			// wIndex should be interface number
+			dir = setup.wIndex & 0x80;
+			if (setup.wValueH == 0 && setup.wIndex == 0 && setup.wLength == 0) {
+				//epSetStatusReg(MSC_BULK_IN_EP, USB_DEVICE_EPSTATUSSET_DTGLIN);
+				//epSetStatusReg(MSC_BULK_OUT_EP, USB_DEVICE_EPSTATUSSET_DTGLOUT);
+				USB_SendZLP(CTRL_EP);
+			} else {
+				//  Stall the request
+				USB_Stall(IN_BANK);
+			}
+			return true;
+	}
 
 	return false;
 }
 
 int MSC_::getDescriptor(USBSetup& setup)
 {
-	DBUGLN("getDescriptor");
-	DBUGVAR(setup.bmRequestType, HEX);
-	DBUGVAR(setup.wValueH, HEX);
+	DBUG("getDescriptor ");
+	DBUG(setup.bmRequestType, HEX);
+	DBUG(" ");
+	DBUGLN(setup.wValueH, HEX);
 
 	// Check if this is a HID Class Descriptor request
 	if (setup.bmRequestType != REQUEST_DEVICETOHOST_STANDARD_INTERFACE) { return 0; }

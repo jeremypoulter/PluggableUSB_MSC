@@ -28,6 +28,11 @@
 #define MSC_BULK_OUT_EP_SIZE            64
 #define MSC_MAX_EP_SIZE            			64
 
+
+// MSC class specific request
+#define GET_MAX_LUN                     0xA1
+#define MASS_STORAGE_RESET              0x21
+
 #define D_MSC_EP(_addr, _packetSize) \
   D_ENDPOINT(_addr, 0x02, _packetSize, 0)
 

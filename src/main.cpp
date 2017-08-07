@@ -14,6 +14,6 @@ void setup()
 void loop()
 {
   if (0 == (millis() % 1000)) {
-    DBUGLN("Alive!");
+   // DBUGLN("Alive!");
   }
 }
