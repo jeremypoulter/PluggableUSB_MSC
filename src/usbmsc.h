@@ -64,14 +64,19 @@ protected:
   bool setup(USBSetup& setup);
   /// MSC Device short name, defaults to "MSC" and returns a length of 4 chars
   uint8_t getShortName(char* name);
+  /// Handle endpoint requests
+  void handleEndpoint(uint8_t ep);
 
 public:
 	/// Creates a MSC USB device with 2 endpoints
 	MSC_(void);
 
+  /// Poll to see if there is stuff to do
+  void poll();
+
 	/// NIY
 	operator bool();
 };
-extern MSC_ MSC;
+extern MSC_ MassStorage;
 
 #endif	/* USBMSC_h */

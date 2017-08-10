@@ -17,10 +17,21 @@
 #include "usbmsc.h"
 #include "debug.h"
 
-// * Endpoint number of the Mass Storage device-to-host data IN endpoint. */
+#define COMPILER_PRAGMA(arg)            _Pragma(#arg)
+#define COMPILER_PACK_SET(alignment)    COMPILER_PRAGMA(pack(alignment))
+#define COMPILER_PACK_RESET()           COMPILER_PRAGMA(pack())
+
+typedef uint16_t                le16_t;
+typedef uint16_t                be16_t;
+typedef uint32_t                le32_t;
+typedef uint32_t                be32_t;
+
+#include "usb_protocol_msc.h"
+
+// Endpoint number of the Mass Storage device-to-host data IN endpoint.
 #define MASS_STORAGE_IN_EPNUM          3	
 
-// * Endpoint number of the Mass Storage host-to-device data OUT endpoint. */
+// Endpoint number of the Mass Storage host-to-device data OUT endpoint.
 #define MASS_STORAGE_OUT_EPNUM         4	
 
 #define MSC_INTERFACE 	pluggedInterface	// MSC Interface
@@ -72,15 +83,20 @@ bool MSC_::setup(USBSetup& setup)
 	DBUG("setup: ");
 	DBUG(setup.bmRequestType, HEX);
 	DBUG(" ");
-	DBUGLN(setup.wValueH, HEX);
+	DBUG(setup.wValueH, HEX);
+	DBUG(" ");
+	DBUG(setup.wIndex, HEX);
+	DBUG(" ");
+	DBUGLN(setup.wLength, HEX);
 
 	switch(setup.bmRequestType) 
 	{
 		// MSC class requests
 		// Get MaxLUN supported
 		case GET_MAX_LUN:
+			DBUGLN("GET_MAX_LUN");
 			// wIndex should be interface number
-			if (setup.wValueH == 0 && setup.wIndex == 0 && setup.wLength == 1) {
+			if (setup.wValueH == 0 /* && setup.wIndex == 0 */ && setup.wLength == 1) {
 				USB_Send(CTRL_EP, getmaxlun, sizeof(getmaxlun));
 			} else {
 				//  Stall the request
@@ -89,8 +105,9 @@ bool MSC_::setup(USBSetup& setup)
 			return true;
 
 		case MASS_STORAGE_RESET:
+			DBUGLN("MASS_STORAGE_RESET");
 			// wIndex should be interface number
-			dir = setup.wIndex & 0x80;
+			//dir = setup.wIndex & 0x80;
 			if (setup.wValueH == 0 && setup.wIndex == 0 && setup.wLength == 0) {
 				//epSetStatusReg(MSC_BULK_IN_EP, USB_DEVICE_EPSTATUSSET_DTGLIN);
 				//epSetStatusReg(MSC_BULK_OUT_EP, USB_DEVICE_EPSTATUSSET_DTGLOUT);
@@ -134,6 +151,23 @@ uint8_t MSC_::getShortName(char* name)
 	return 3;
 }
 
+void MSC_::handleEndpoint(uint8_t ep)
+{
+	DBUG("handleEndpoint ");
+	DBUGLN(ep, HEX);
+
+}
+
+void MSC_::poll()
+{
+	static struct usb_msc_cbw udi_msc_cbw;
+	uint32_t recv = USB_Recv(MSC_BULK_IN_EP, &udi_msc_cbw, sizeof(udi_msc_cbw));
+	if(recv > 0) {
+		DBUG("poll: got ");
+		DBUGLN(recv);
+	}
+
+}
 
 MSC_::MSC_(void) : PluggableUSBModule(TOTAL_EP - 1, 1, epType)
 {
