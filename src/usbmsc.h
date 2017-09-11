@@ -9,7 +9,19 @@
 
 #include <stdint.h>
 #include <Arduino.h>
+
 #include "usb.h"
+
+#define COMPILER_PRAGMA(arg)            _Pragma(#arg)
+#define COMPILER_PACK_SET(alignment)    COMPILER_PRAGMA(pack(alignment))
+#define COMPILER_PACK_RESET()           COMPILER_PRAGMA(pack())
+
+typedef uint16_t                le16_t;
+typedef uint16_t                be16_t;
+typedef uint32_t                le32_t;
+typedef uint32_t                be32_t;
+
+#include "usb_protocol_msc.h"
 
 // Total number of endpoint is 3 control endpoint -1, BULK OUT Endpoint -2
 #define TOTAL_EP                        3
@@ -64,9 +76,8 @@ protected:
   bool setup(USBSetup& setup);
   /// MSC Device short name, defaults to "MSC" and returns a length of 4 chars
   uint8_t getShortName(char* name);
-  /// Handle endpoint requests
-  void handleEndpoint(uint8_t ep);
 
+  void processMscCwb(struct usb_msc_cbw *udi_msc_cbw);
 public:
 	/// Creates a MSC USB device with 2 endpoints
 	MSC_(void);
