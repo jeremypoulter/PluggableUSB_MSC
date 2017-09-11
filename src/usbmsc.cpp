@@ -16,14 +16,18 @@
 
 #include "usbmsc.h"
 #include "debug.h"
+#include "mtd.h"
+
+#include "compiler.h"
+#include "udi_msc.h"
 
 #define MSC_INTERFACE       pluggedInterface  // MSC Interface
 #define MSC_FIRST_ENDPOINT  pluggedEndpoint
 
 // Endpoint number of the Mass Storage host-to-device data OUT endpoint.
-#define MSC_ENDPOINT_OUT	pluggedEndpoint
+#define MSC_ENDPOINT_OUT  pluggedEndpoint
 // Endpoint number of the Mass Storage device-to-host data IN endpoint.
-#define MSC_ENDPOINT_IN	((uint8_t)(pluggedEndpoint+1))
+#define MSC_ENDPOINT_IN   ((uint8_t)(pluggedEndpoint+1))
 
 #define MSC_RX MSC_ENDPOINT_OUT
 #define MSC_TX MSC_ENDPOINT_IN
@@ -39,19 +43,6 @@
 //const DeviceDescriptor USB_DeviceDescriptor = D_DEVICE(0x00, 0x00, 0x00, 0x40, 0x03EB, 0x2403, 0x100, 0x00, 0x20, 0x03, 0x1);
 const DeviceDescriptor USB_DeviceDescriptor = D_DEVICE(0x00, 0x00, 0x00, MSC_MAX_EP_SIZE, USB_VID, USB_PID, 0x100, IMANUFACTURER, IPRODUCT, ISERIAL, 1);
 const DeviceDescriptor USB_DeviceDescriptorB = D_DEVICE(0xEF, 0x02, 0x01, MSC_MAX_EP_SIZE, USB_VID, USB_PID, 0x100, IMANUFACTURER, IPRODUCT, ISERIAL, 1);
-
-// From ASF/compiler.h
-#define swap32(u32) ((uint32_t)__builtin_bswap32((uint32_t)(u32)))
-
-#define  le32_to_cpu(x) (x)
-#define  cpu_to_le32(x) (x)
-#define  LE32_TO_CPU(x) (x)
-#define  CPU_TO_LE32(x) (x)
-
-#define  be32_to_cpu(x) swap32(x)
-#define  cpu_to_be32(x) swap32(x)
-#define  BE32_TO_CPU(x) swap32(x)
-#define  CPU_TO_BE32(x) swap32(x)
 
 MSC_ MassStorage;
 
@@ -157,38 +148,13 @@ void MSC_::poll()
     DBUG("poll: got ");
     DBUGLN(recv);
 
-    // Check CBW integrity:
-    // transfer status/CBW length/CBW signature
-    if ((sizeof(udi_msc_cbw) != recv)
-    || (udi_msc_cbw.dCBWSignature !=
-        CPU_TO_BE32(USB_CBW_SIGNATURE))) 
-    {
-      // (5.2.1) Devices receiving a CBW with an invalid signature should stall
-      // further traffic on the Bulk In pipe, and either stall further traffic
-      // or accept and discard further traffic on the Bulk Out pipe, until
-      // reset recovery.
-/*
-      udi_msc_b_cbw_invalid = true;
-      udi_msc_cbw_invalid();
-      udi_msc_csw_invalid();
-*/
-      return;
-    }
-
-    processMscCwb(&udi_msc_cbw);
+    udi_msc_process_trans(&udi_msc_cbw);
   }
-}
-
-
-void MSC_::processMscCwb(struct usb_msc_cbw *udi_msc_cbw)
-{
-  DBUGVAR(udi_msc_cbw->CDB[0], HEX);
-
 }
 
 MSC_::MSC_(void) : PluggableUSBModule(TOTAL_EP - 1, 1, epType)
 {
-  epType[0] = EP_TYPE_BULK_IN_MSC;	// MSC_ENDPOINT_IN
-  epType[1] = EP_TYPE_BULK_OUT_MSC;	// MSC_ENDPOINT_OUT
+  epType[OUT_BANK] = EP_TYPE_BULK_IN_MSC;	// MSC_ENDPOINT_IN
+  epType[IN_BANK] = EP_TYPE_BULK_OUT_MSC;	// MSC_ENDPOINT_OUT
   PluggableUSB().plug(this);
 }
