@@ -1,7 +1,15 @@
 #include <Arduino.h>
+#include <Adafruit_NeoPixel.h>
 
 #include "usbmsc.h"
 #include "debug.h"
+
+#define NEOPIX 40u
+
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, NEOPIX, NEO_GRB + NEO_KHZ800);
+uint32_t ledClear = 0;
+
+#define LED_CLEAR_TIME 50
 
 void setup()
 {
@@ -9,13 +17,29 @@ void setup()
   DBUGLN("======================================================");
   DBUGLN("USB MSC Test");
   DBUGLN("======================================================");
+
+  strip.begin();
+  strip.setPixelColor(0, 0, 0, 255);
+  strip.show();
+
+  MassStorage.onDataWrite([](size_t size) {
+    strip.setPixelColor(0, 255, 0, 0);
+    strip.show();
+    ledClear = millis() + LED_CLEAR_TIME;
+  });
+  MassStorage.onDataRead([](size_t size) {
+    strip.setPixelColor(0, 0, 255, 0);
+    strip.show();
+    ledClear = millis() + LED_CLEAR_TIME;
+  });
 }
 
 void loop()
 {
-  if (0 == (millis() % 1000)) {
-   // DBUGLN("Alive!");
-  }
-
   MassStorage.poll();
+
+  if(0 != ledClear && millis() > ledClear) {
+    strip.setPixelColor(0, 0, 0, 255);
+    strip.show();
+  }
 }

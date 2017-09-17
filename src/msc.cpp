@@ -27,11 +27,13 @@
  * ----------------------------------------------------------------------------
  */
 
-#include <Arduino.h>
 #include "debug.h"
 
 #include "usb.h"
+#include "msc.h"
 #include "usbmsc.h"
+
+#include <Arduino.h>
 
 #include "sbc_protocol.h"
 #include "spc_protocol.h"
@@ -62,10 +64,13 @@ static uint8_t usb_ep_msc_out = 0;
 
 bool mscReset = false;
 
-void msc_config(uint8_t in, uint8_t out) 
+DataEvent msc_data_event = NULL;
+
+void msc_config(uint8_t in, uint8_t out, DataEvent onData)
 {
   usb_ep_msc_in = in;
   usb_ep_msc_out = out;
+  msc_data_event = onData;
 }
 
 void msc_reset(void)
@@ -116,7 +121,7 @@ static bool udi_msc_cbw_validate(uint32_t alloc_len, uint8_t dir_flag);
  * \param buffer        Internal RAM buffer to send
  * \param buf_size   Size of buffer to send
  */
-static void udi_msc_data_send(uint8_t *buffer, uint8_t buf_size);
+static void udi_msc_data_send(struct usb_msc_cbw *cbw, uint8_t *buffer, uint8_t buf_size);
 
 /**
  * \name Routines to process CSW packet
@@ -128,7 +133,7 @@ static void udi_msc_data_send(uint8_t *buffer, uint8_t buf_size);
  *
  * Called at the end of SCSI command
  */
-static void udi_msc_csw_process(void);
+static void udi_msc_csw_process(struct usb_msc_cbw *cbw);
 
 /**
  * \brief Sends CSW
@@ -189,13 +194,13 @@ static void udi_msc_sense_command_invalid(void);
  * \brief Process SPC Request Sense command
  * Returns error information about last command
  */
-static void udi_msc_spc_requestsense(void);
+static void udi_msc_spc_requestsense(struct usb_msc_cbw *cbw);
 
 /**
  * \brief Process SPC Inquiry command
  * Returns information (name,version) about disk
  */
-static void udi_msc_spc_inquiry(void);
+static void udi_msc_spc_inquiry(struct usb_msc_cbw *cbw);
 
 /**
  * \brief Checks state of disk
@@ -208,12 +213,12 @@ static bool udi_msc_spc_testunitready_global(void);
  * \brief Process test unit ready command
  * Returns state of logical unit
  */
-static void udi_msc_spc_testunitready(void);
+static void udi_msc_spc_testunitready(struct usb_msc_cbw *cbw);
 
 /**
  * \brief Process prevent allow medium removal command
  */
-static void udi_msc_spc_prevent_allow_medium_removal(void);
+static void udi_msc_spc_prevent_allow_medium_removal(struct usb_msc_cbw *cbw);
 
 /**
  * \brief Process mode sense command
@@ -221,17 +226,17 @@ static void udi_msc_spc_prevent_allow_medium_removal(void);
  * \param b_sense10     Sense10 SCSI command, if true
  * \param b_sense10     Sense6  SCSI command, if false
  */
-static void udi_msc_spc_mode_sense(bool b_sense10);
+static void udi_msc_spc_mode_sense(struct usb_msc_cbw *cbw, bool b_sense10);
 
 /**
  * \brief Process start stop command
  */
-static void udi_msc_sbc_start_stop(void);
+static void udi_msc_sbc_start_stop(struct usb_msc_cbw *cbw);
 
 /**
  * \brief Process read capacity command
  */
-static void udi_msc_sbc_read_capacity(void);
+static void udi_msc_sbc_read_capacity(struct usb_msc_cbw *cbw);
 
 /**
  * \brief Process read10 or write10 command
@@ -241,7 +246,7 @@ static void udi_msc_sbc_read_capacity(void);
  */
 static void udi_msc_sbc_trans(struct usb_msc_cbw *cbw, bool b_read);
 
-static void udi_msc_read_format_capacity(void);
+static void udi_msc_read_format_capacity(struct usb_msc_cbw *cbw);
 
 void padded_memcpy(char *dst, const char *src, int len)
 {
@@ -303,7 +308,7 @@ void msc_process_cbw(struct usb_msc_cbw *cbw, uint32_t recv)
   {
     // Bad LUN, then stop command process
     udi_msc_sense_fail_cdb_invalid();
-    udi_msc_csw_process();
+    udi_msc_csw_process(cbw);
     return;
   }
 #endif
@@ -317,50 +322,50 @@ void msc_process_cbw(struct usb_msc_cbw *cbw, uint32_t recv)
   {
     case SPC_REQUEST_SENSE:
       DBUGLN("SPC_REQUEST_SENSE");
-      udi_msc_spc_requestsense();
+      udi_msc_spc_requestsense(cbw);
       break;
 
     case SPC_INQUIRY:
       DBUGLN("SPC_INQUIRY");
-      udi_msc_spc_inquiry();
+      udi_msc_spc_inquiry(cbw);
       break;
 
     case SPC_MODE_SENSE6:
       DBUGLN("SPC_MODE_SENSE6");
-      udi_msc_spc_mode_sense(false);
+      udi_msc_spc_mode_sense(cbw, false);
       break;
 
     case SPC_MODE_SENSE10:
       DBUGLN("SPC_MODE_SENSE10");
-      udi_msc_spc_mode_sense(true);
+      udi_msc_spc_mode_sense(cbw, true);
       break;
 
     case SPC_TEST_UNIT_READY:
       DBUGLN("SPC_TEST_UNIT_READY");
-      udi_msc_spc_testunitready();
+      udi_msc_spc_testunitready(cbw);
       break;
 
     case SBC_READ_CAPACITY10:
       DBUGLN("SBC_READ_CAPACITY10");
-      udi_msc_sbc_read_capacity();
+      udi_msc_sbc_read_capacity(cbw);
       break;
 
     case SBC_START_STOP_UNIT:
       DBUGLN("SBC_START_STOP_UNIT");
-      udi_msc_sbc_start_stop();
+      udi_msc_sbc_start_stop(cbw);
       break;
 
     // Accepts request to support plug/plug in case of card reader
     case SPC_PREVENT_ALLOW_MEDIUM_REMOVAL:
       DBUGLN("SPC_PREVENT_ALLOW_MEDIUM_REMOVAL");
-      udi_msc_spc_prevent_allow_medium_removal();
+      udi_msc_spc_prevent_allow_medium_removal(cbw);
       break;
 
     // Accepts request to support full format from Windows
     case SBC_VERIFY10:
       DBUGLN("SBC_VERIFY10");
       udi_msc_sense_pass();
-      udi_msc_csw_process();
+      udi_msc_csw_process(cbw);
       break;
 
     case SBC_READ10:
@@ -375,14 +380,14 @@ void msc_process_cbw(struct usb_msc_cbw *cbw, uint32_t recv)
 
     case 0x23:
       DBUGLN("0x23");
-      udi_msc_read_format_capacity();
+      udi_msc_read_format_capacity(cbw);
       break;
 
     default:
       DBUG("Invalid MSC command: ");
       DBUGVAR(cbw->CDB[0], HEX);
       udi_msc_sense_command_invalid();
-      udi_msc_csw_process();
+      udi_msc_csw_process(cbw);
       break;
   }
 }
@@ -403,7 +408,7 @@ static bool udi_msc_cbw_validate(uint32_t alloc_len, uint8_t dir_flag)
       (udi_msc_csw.dCSWDataResidue < alloc_len))
   {
     udi_msc_sense_fail_cdb_invalid();
-    udi_msc_csw_process();
+    udi_msc_csw_process(cbw);
     return false;
   }
 #endif
@@ -422,13 +427,13 @@ static bool udi_msc_cbw_validate(uint32_t alloc_len, uint8_t dir_flag)
 //---------------------------------------------
 //------- Routines to process small data packet
 
-static void udi_msc_data_send(uint8_t *buffer, uint8_t buf_size)
+static void udi_msc_data_send(struct usb_msc_cbw *cbw, uint8_t *buffer, uint8_t buf_size)
 {
   if (USB_Send(USB_EP_MSC_IN, (void *)buffer, buf_size) != buf_size)
   {
     // If endpoint not available, then exit process command
     udi_msc_sense_fail_hardware();
-    udi_msc_csw_process();
+    udi_msc_csw_process(cbw);
   }
 
   // Update sense data
@@ -436,7 +441,7 @@ static void udi_msc_data_send(uint8_t *buffer, uint8_t buf_size)
 
   // Update CSW
   udi_msc_csw.dCSWDataResidue -= buf_size;
-  udi_msc_csw_process();
+  udi_msc_csw_process(cbw);
 }
 
 //---------------------------------------------
@@ -538,10 +543,10 @@ static void udi_msc_spc_requestsense(struct usb_msc_cbw *cbw)
   if (!udi_msc_cbw_validate(length, USB_CBW_DIRECTION_IN))
     return;
   // Send sense data
-  udi_msc_data_send((uint8_t *)&udi_msc_sense, length);
+  udi_msc_data_send(cbw, (uint8_t *)&udi_msc_sense, length);
 }
 
-static void udi_msc_read_format_capacity(void)
+static void udi_msc_read_format_capacity(struct usb_msc_cbw *cbw)
 {
   uint8_t buf[12] = {0,
                      0,
@@ -561,9 +566,10 @@ static void udi_msc_read_format_capacity(void)
   if (udi_msc_csw.dCSWDataResidue > length)
     udi_msc_csw.dCSWDataResidue = length;
 
-  if (!udi_msc_cbw_validate(length, USB_CBW_DIRECTION_IN))
+  if (!udi_msc_cbw_validate(length, USB_CBW_DIRECTION_IN)) {
     return;
-  udi_msc_data_send(buf, length);
+  }
+  udi_msc_data_send(cbw, buf, length);
 }
 
 static void udi_msc_spc_inquiry(struct usb_msc_cbw *cbw)
@@ -606,7 +612,7 @@ if ((0 != (cbw->CDB[1] & (SCSI_INQ_REQ_EVPD | SCSI_INQ_REQ_CMDT))) ||
     // PAGE or OPERATION CODE fields are not empty
     //  = No standard inquiry asked
     udi_msc_sense_fail_cdb_invalid(); // Command is unsupported
-    udi_msc_csw_process();
+    udi_msc_csw_process(cbw);
     return;
 }
 */
@@ -614,12 +620,12 @@ if ((0 != (cbw->CDB[1] & (SCSI_INQ_REQ_EVPD | SCSI_INQ_REQ_CMDT))) ||
   // logval("Sense Size", length);
 
   // Send inquiry data
-  udi_msc_data_send((uint8_t *)&udi_msc_inquiry_data, length);
+  udi_msc_data_send(cbw, (uint8_t *)&udi_msc_inquiry_data, length);
 }
 
 static bool udi_msc_spc_testunitready_global(void) { return true; }
 
-static void udi_msc_spc_testunitready(void)
+static void udi_msc_spc_testunitready(struct usb_msc_cbw *cbw)
 {
   if (udi_msc_spc_testunitready_global())
   {
@@ -627,7 +633,7 @@ static void udi_msc_spc_testunitready(void)
     udi_msc_sense_pass();
   }
   // Send status in CSW packet
-  udi_msc_csw_process();
+  udi_msc_csw_process(cbw);
 }
 
 static void udi_msc_spc_mode_sense(struct usb_msc_cbw *cbw, bool b_sense10)
@@ -700,10 +706,10 @@ static void udi_msc_spc_mode_sense(struct usb_msc_cbw *cbw, bool b_sense10)
   }
 
   // Send mode sense data
-  udi_msc_data_send((uint8_t *)&sense, request_lgt);
+  udi_msc_data_send(cbw, (uint8_t *)&sense, request_lgt);
 }
 
-static void udi_msc_spc_prevent_allow_medium_removal(void)
+static void udi_msc_spc_prevent_allow_medium_removal(struct usb_msc_cbw *cbw)
 {
 #if USE_MSC_CHECKS
   uint8_t prevent = cbw->CDB[4];
@@ -718,10 +724,10 @@ static void udi_msc_spc_prevent_allow_medium_removal(void)
 #else
   udi_msc_sense_pass();
 #endif
-  udi_msc_csw_process();
+  udi_msc_csw_process(cbw);
 }
 
-static void udi_msc_sbc_start_stop(void)
+static void udi_msc_sbc_start_stop(struct usb_msc_cbw *cbw)
 {
 #if 0
     bool start = 0x1 & cbw->CDB[4];
@@ -731,10 +737,10 @@ static void udi_msc_sbc_start_stop(void)
     }
 #endif
   udi_msc_sense_pass();
-  udi_msc_csw_process();
+  udi_msc_csw_process(cbw);
 }
 
-static void udi_msc_sbc_read_capacity(void)
+static void udi_msc_sbc_read_capacity(struct usb_msc_cbw *cbw)
 {
   COMPILER_ALIGNED(4)
   static struct sbc_read_capacity10_data udi_msc_capacity;
@@ -747,12 +753,11 @@ static void udi_msc_sbc_read_capacity(void)
   udi_msc_capacity.block_len = CPU_TO_BE32(UDI_MSC_BLOCK_SIZE);
   udi_msc_capacity.max_lba = cpu_to_be32(udi_msc_capacity.max_lba);
   // Send the corresponding sense data
-  udi_msc_data_send((uint8_t *)&udi_msc_capacity, sizeof(udi_msc_capacity));
+  udi_msc_data_send(cbw, (uint8_t *)&udi_msc_capacity, sizeof(udi_msc_capacity));
 }
 
 COMPILER_ALIGNED(4)
 static uint8_t block_buffer[UDI_MSC_BLOCK_SIZE];
-static WriteState usbWriteState;
 
 static void udi_msc_sbc_trans(struct usb_msc_cbw *cbw, bool b_read)
 {
@@ -797,6 +802,7 @@ static void udi_msc_sbc_trans(struct usb_msc_cbw *cbw, bool b_read)
     {
       read_block(udi_msc_addr + i, block_buffer);
       USB_Send(USB_EP_MSC_IN, block_buffer, UDI_MSC_BLOCK_SIZE);
+      msc_data_event(false, UDI_MSC_BLOCK_SIZE);
     }
     else
     {
@@ -808,7 +814,7 @@ static void udi_msc_sbc_trans(struct usb_msc_cbw *cbw, bool b_read)
 #endif
 
       write_block(udi_msc_addr + i, block_buffer, false, &usbWriteState);
-      led_signal();
+      msc_data_event(true, UDI_MSC_BLOCK_SIZE);
     }
     udi_msc_csw.dCSWDataResidue -= UDI_MSC_BLOCK_SIZE;
   }
@@ -816,7 +822,7 @@ static void udi_msc_sbc_trans(struct usb_msc_cbw *cbw, bool b_read)
   udi_msc_sense_pass();
 
   // Send status of transfer in CSW packet
-  udi_msc_csw_process();
+  udi_msc_csw_process(cbw);
 }
 
 #if USE_MSC_HANDOVER

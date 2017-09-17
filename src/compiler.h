@@ -54,6 +54,17 @@ typedef uint32_t                be32_t;
 #define  BE32_TO_CPU(x) swap32(x)
 #define  CPU_TO_BE32(x) swap32(x)
 
+typedef int8_t                  S8 ;  //!< 8-bit signed integer.
+typedef uint8_t                 U8 ;  //!< 8-bit unsigned integer.
+typedef int16_t                 S16;  //!< 16-bit signed integer.
+typedef uint16_t                U16;  //!< 16-bit unsigned integer.
+typedef int32_t                 S32;  //!< 32-bit signed integer.
+typedef uint32_t                U32;  //!< 32-bit unsigned integer.
+typedef int64_t                 S64;  //!< 64-bit signeds integer.
+typedef uint64_t                U64;  //!< 64-bit unsigned integer.
+typedef float                   F32;  //!< 32-bit floating-point number.
+typedef double                  F64;  //!< 64-bit floating-point number.
+
 #define MSB(u16) (((U8 *)&(u16))[1]) //!< Most significant byte of \a u16.
 #define LSB(u16) (((U8 *)&(u16))[0]) //!< Least significant byte of \a u16.
 

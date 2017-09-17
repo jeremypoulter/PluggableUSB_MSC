@@ -2,11 +2,15 @@
 //================================================================================
 
 /**
-	MSC USB class
+  MSC USB class
 */
 #ifndef USBMSC_h
 #define USBMSC_h
 
+#undef min
+#undef max
+
+#include <functional>
 #include <stdint.h>
 #include <Arduino.h>
 
@@ -49,13 +53,17 @@ _Pragma("pack()")
 
 #endif
 
+typedef std::function<void(size_t bytes)> DataEventHandlerFunction;
+
 /**
- 	 Concrete MSC implementation of a PluggableUSBModule
+    Concrete MSC implementation of a PluggableUSBModule
  */
 class MSC_ : public PluggableUSBModule
 {
 private:
   uint32_t epType[2];
+  DataEventHandlerFunction _onDataWrite;
+  DataEventHandlerFunction _onDataRead;
 
 protected:
   // Implementation of the PUSBListNode
@@ -72,14 +80,22 @@ protected:
 
   void processMscCwb(struct usb_msc_cbw *udi_msc_cbw);
 public:
-	/// Creates a MSC USB device with 2 endpoints
-	MSC_(void);
+  /// Creates a MSC USB device with 2 endpoints
+  MSC_(void);
 
   /// Poll to see if there is stuff to do
   void poll();
 
-	/// NIY
-	operator bool();
+  /// NIY
+  operator bool();
+
+  // USB events
+  void onDataWrite(DataEventHandlerFunction fnHandler) {
+    _onDataWrite = fnHandler;
+  }
+  void onDataRead(DataEventHandlerFunction fnHandler) {
+    _onDataRead = fnHandler;
+  }
 };
 extern MSC_ MassStorage;
 
