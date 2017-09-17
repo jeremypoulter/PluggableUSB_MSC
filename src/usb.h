@@ -60,7 +60,10 @@
 #define USB_SendZLP				USBDevice.sendZlp
 #define USB_Flush					USBDevice.flush
 #define USB_Stall					USBDevice.stall
-#define USB_Stall					USBDevice.stall
+
+// TODO: implement!!
+#define USB_Reset(ep)				
+
 #define is_write_enabled(x)			(1)
 
 #else
@@ -68,5 +71,8 @@
 #error "Unsupported architecture"
 
 #endif
+
+/* USB data Block size - 512 */
+#define UDI_MSC_BLOCK_SIZE 512L
 
 #endif

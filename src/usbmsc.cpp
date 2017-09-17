@@ -19,7 +19,7 @@
 #include "mtd.h"
 
 #include "compiler.h"
-#include "udi_msc.h"
+#include "msc.h"
 
 #define MSC_INTERFACE       pluggedInterface  // MSC Interface
 #define MSC_FIRST_ENDPOINT  pluggedEndpoint
@@ -143,18 +143,19 @@ void MSC_::poll()
 {
   int ep = MSC_BULK_OUT_EP;
   struct usb_msc_cbw udi_msc_cbw;
-  int32_t recv = (int32_t)USB_Recv(ep, &udi_msc_cbw, sizeof(udi_msc_cbw));
-  if(recv > 0) {
+  uint32_t recv = USB_Recv(ep, &udi_msc_cbw, sizeof(udi_msc_cbw));
+  if((int32_t)recv > 0) {
     DBUG("poll: got ");
     DBUGLN(recv);
 
-    udi_msc_process_trans(&udi_msc_cbw);
+    msc_process_cbw(&udi_msc_cbw, recv);
   }
 }
 
 MSC_::MSC_(void) : PluggableUSBModule(TOTAL_EP - 1, 1, epType)
 {
-  epType[OUT_BANK] = EP_TYPE_BULK_IN_MSC;	// MSC_ENDPOINT_IN
-  epType[IN_BANK] = EP_TYPE_BULK_OUT_MSC;	// MSC_ENDPOINT_OUT
+  epType[MSC_IN_INDEX] = EP_TYPE_BULK_IN_MSC;	// MSC_ENDPOINT_IN
+  epType[MSC_OUT_INDEX] = EP_TYPE_BULK_OUT_MSC;	// MSC_ENDPOINT_OUT
   PluggableUSB().plug(this);
+  msc_config(MSC_BULK_IN_EP, MSC_BULK_OUT_EP);
 }

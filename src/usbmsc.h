@@ -11,16 +11,6 @@
 #include <Arduino.h>
 
 #include "usb.h"
-
-#define COMPILER_PRAGMA(arg)            _Pragma(#arg)
-#define COMPILER_PACK_SET(alignment)    COMPILER_PRAGMA(pack(alignment))
-#define COMPILER_PACK_RESET()           COMPILER_PRAGMA(pack())
-
-typedef uint16_t                le16_t;
-typedef uint16_t                be16_t;
-typedef uint32_t                le32_t;
-typedef uint32_t                be32_t;
-
 #include "usb_protocol_msc.h"
 
 // Total number of endpoint is 3 control endpoint -1, BULK OUT Endpoint -2
@@ -29,10 +19,13 @@ typedef uint32_t                be32_t;
 #define CTRL_EP                         0
 
 #define MSC_FIRST_ENDPOINT              pluggedEndpoint
+#define MSC_IN_INDEX                    0
+#define MSC_OUT_INDEX                   1
+
 // BULK IN Endpoint
-#define MSC_BULK_IN_EP                  pluggedEndpoint
+#define MSC_BULK_IN_EP                  ((uint8_t)(MSC_FIRST_ENDPOINT+MSC_IN_INDEX))
 // BULK OUT Endpoint 
-#define MSC_BULK_OUT_EP                 ((uint8_t)(pluggedEndpoint+1))
+#define MSC_BULK_OUT_EP                 ((uint8_t)(MSC_FIRST_ENDPOINT+MSC_OUT_INDEX))
 // Control Endpoint size - 64 bytes 
 #define CTRL_EP_SIZE                    64
 // BULK IN/OUT Endpoint size - 64 bytes 

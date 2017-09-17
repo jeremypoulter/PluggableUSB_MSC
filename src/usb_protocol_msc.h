@@ -47,6 +47,7 @@
 #ifndef _USB_PROTOCOL_MSC_H_
 #define _USB_PROTOCOL_MSC_H_
 
+#include "compiler.h"
 
 /**
  * \ingroup usb_protocol_group
