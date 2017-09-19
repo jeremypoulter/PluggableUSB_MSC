@@ -72,7 +72,10 @@ bool msc_add_device(Mtd *mtd)
 {
   if(max_lun + 1 < MAX_LUNS) {
     luns[++max_lun] = mtd;
+    return true;
   }
+
+  return false;
 }
 
 void msc_reset(void)
