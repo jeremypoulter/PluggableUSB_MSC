@@ -51,7 +51,9 @@ static uint8_t usb_ep_msc_out = 0;
 #define USB_EP_MSC_OUT usb_ep_msc_out
 
 // index of highest LUN
-#define MAX_LUN 0
+int max_lun = -1;
+#define MAX_LUN max_lun
+#define MAX_LUNS 1
 
 // needs to be more than ~4200 (to force FAT16)
 #define NUM_FAT_BLOCKS 8000
@@ -66,11 +68,20 @@ bool mscReset = false;
 
 DataEvent msc_data_event = NULL;
 
+Mtd *luns[MAX_LUNS];
+
 void msc_config(uint8_t in, uint8_t out, DataEvent onData)
 {
   usb_ep_msc_in = in;
   usb_ep_msc_out = out;
   msc_data_event = onData;
+}
+
+bool msc_add_device(Mtd *mtd)
+{
+  if(max_lun + 1 < MAX_LUNS) {
+    luns[++max_lun] = mtd;
+  }
 }
 
 void msc_reset(void)
@@ -80,6 +91,51 @@ void msc_reset(void)
   USB_Reset(USB_EP_MSC_OUT);
 }
 
+
+static bool msc_read_block(uint8_t lun, uint32_t block_no, uint8_t *data) 
+{
+  Mtd *device = luns[lun];
+
+  if(MtdState_Ready == device->getState())
+  {
+    if(MtdRet_Ok == device->initReadBlocks(block_no, 1))
+    {
+      if(MtdRet_Ok == device->startReadBlocks(data, 1))
+      {
+        if(MtdRet_Ok == device->waitEndOfReadBlocks(false))
+        {
+          return true;
+        }
+      }
+    }
+
+  }
+  
+  return false;
+}
+  
+static bool msc_write_block(uint8_t lun, uint32_t block_no, uint8_t *data) 
+{
+  Mtd *device = luns[lun];
+  
+    if(MtdState_Ready == device->getState())
+    {
+      if(MtdRet_Ok == device->initWriteBlocks(block_no, 1))
+      {
+        if(MtdRet_Ok == device->startWriteBlocks(data, 1))
+        {
+          if(MtdRet_Ok == device->waitEndOfWriteBlocks(false))
+          {
+            return true;
+          }
+        }
+      }
+  
+    }
+    
+    return false;
+  }
+  
 //! Structure to send a CSW packet
 static struct usb_msc_csw udi_msc_csw = { CPU_TO_BE32(USB_CSW_SIGNATURE), 0 ,0 ,0 };
 //! Structure with current SCSI sense data
@@ -789,6 +845,8 @@ static void udi_msc_sbc_trans(struct usb_msc_cbw *cbw, bool b_read)
   DBUGLN(trans_size);
 #endif
 
+  uint8_t lun = cbw->bCBWLUN &= USB_CBW_LUN_MASK;
+
   for (uint32_t i = 0; i < udi_msc_nb_block; ++i)
   {
     if (!USB_Ok())
@@ -800,7 +858,7 @@ static void udi_msc_sbc_trans(struct usb_msc_cbw *cbw, bool b_read)
     // logval("readblk", i);
     if (b_read)
     {
-      read_block(udi_msc_addr + i, block_buffer);
+      msc_read_block(lun, udi_msc_addr + i, block_buffer);
       USB_Send(USB_EP_MSC_IN, block_buffer, UDI_MSC_BLOCK_SIZE);
       msc_data_event(false, UDI_MSC_BLOCK_SIZE);
     }
@@ -813,7 +871,7 @@ static void udi_msc_sbc_trans(struct usb_msc_cbw *cbw, bool b_read)
                                USB_EP_MSC_OUT, cbw->dCBWTag);
 #endif
 
-      write_block(udi_msc_addr + i, block_buffer, false, &usbWriteState);
+      msc_write_block(lun, udi_msc_addr + i, block_buffer);
       msc_data_event(true, UDI_MSC_BLOCK_SIZE);
     }
     udi_msc_csw.dCSWDataResidue -= UDI_MSC_BLOCK_SIZE;

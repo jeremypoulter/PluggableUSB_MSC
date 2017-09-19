@@ -1,8 +1,9 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 
-#include "usbmsc.h"
 #include "debug.h"
+#include "usbmsc.h"
+#include "mtd.h"
 
 #define NEOPIX 40u
 
@@ -10,6 +11,8 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, NEOPIX, NEO_GRB + NEO_KHZ800);
 uint32_t ledClear = 0;
 
 #define LED_CLEAR_TIME 50
+
+Mtd testMtd;
 
 void setup()
 {
@@ -22,6 +25,7 @@ void setup()
   strip.setPixelColor(0, 0, 0, 255);
   strip.show();
 
+  MassStorage.addDevice(testMtd);
   MassStorage.onDataWrite([](size_t size) {
     strip.setPixelColor(0, 255, 0, 0);
     strip.show();

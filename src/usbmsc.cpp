@@ -152,6 +152,10 @@ void MSC_::poll()
   }
 }
 
+bool MSC_::addDevice(Mtd &device) {
+  return msc_add_device(&device);
+}
+
 MSC_::MSC_(void) :
   PluggableUSBModule(TOTAL_EP - 1, 1, epType),
   _onDataWrite(NULL),

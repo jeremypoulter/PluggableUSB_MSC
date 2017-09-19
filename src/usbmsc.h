@@ -15,6 +15,7 @@
 #include <Arduino.h>
 
 #include "usb.h"
+#include "mtd.h"
 #include "usb_protocol_msc.h"
 
 // Total number of endpoint is 3 control endpoint -1, BULK OUT Endpoint -2
@@ -88,6 +89,8 @@ public:
 
   /// NIY
   operator bool();
+
+  bool addDevice(Mtd &device);
 
   // USB events
   void onDataWrite(DataEventHandlerFunction fnHandler) {

@@ -62,7 +62,8 @@
 #define USB_Stall					USBDevice.stall
 
 // TODO: implement!!
-#define USB_Reset(ep)				
+#define USB_Reset(ep)		
+#define USB_Ok()					true		
 
 #define is_write_enabled(x)			(1)
 
