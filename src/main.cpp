@@ -3,7 +3,7 @@
 
 #include "debug.h"
 #include "usbmsc.h"
-#include "mtd.h"
+#include "DynamicMtd.h"
 
 #define NEOPIX 40u
 
@@ -12,7 +12,7 @@ uint32_t ledClear = 0;
 
 #define LED_CLEAR_TIME 50
 
-Mtd testMtd;
+DynamicMtd testMtd;
 
 void setup()
 {

@@ -28,6 +28,7 @@
  */
 
 #include "debug.h"
+#include "config.h"
 
 #include "usb.h"
 #include "msc.h"
@@ -53,16 +54,6 @@ static uint8_t usb_ep_msc_out = 0;
 // index of highest LUN
 int max_lun = -1;
 #define MAX_LUN max_lun
-#define MAX_LUNS 1
-
-// needs to be more than ~4200 (to force FAT16)
-#define NUM_FAT_BLOCKS 8000
-
-#define VENDOR_NAME "Adafruit Industries"
-#define PRODUCT_NAME "Arduino MSC"
-#define VOLUME_LABEL "ARDUINO"
-#define INDEX_URL "https://adafru.it/featherm0"
-#define BOARD_ID "SAMD21G18A-Arduino-v0"
 
 bool mscReset = false;
 

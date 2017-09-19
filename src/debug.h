@@ -43,4 +43,8 @@
 #endif
 #define DEBUG DEBUG_PORT
 
+#define CONCAT_1(a, b) a##b
+#define CONCAT_0(a, b) CONCAT_1(a, b)
+#define STATIC_ASSERT(e) enum { CONCAT_0(_static_assert_, __LINE__) = 1 / ((e) ? 1 : 0) }
+
 #endif // __DEBUG_H
