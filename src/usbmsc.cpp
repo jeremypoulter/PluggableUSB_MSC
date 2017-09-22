@@ -163,6 +163,7 @@ MSC_::MSC_(void) :
 {
   epType[MSC_IN_INDEX] = EP_TYPE_BULK_IN_MSC;     // MSC_ENDPOINT_IN
   epType[MSC_OUT_INDEX] = EP_TYPE_BULK_OUT_MSC;   // MSC_ENDPOINT_OUT
+  PluggableUSB().plug(this);
   msc_config(MSC_BULK_IN_EP, MSC_BULK_OUT_EP, [this](bool write, size_t bytes) {
     if(write && _onDataWrite) {
       _onDataWrite(bytes);
@@ -170,5 +171,4 @@ MSC_::MSC_(void) :
       _onDataRead(bytes);
     }
   });
-  PluggableUSB().plug(this);
 }
