@@ -8,7 +8,7 @@
 
 #define VERSION "0.0.1"
 #define VENDOR_NAME "Adafruit Industries"
-#define PRODUCT_NAME "Arduino MSC"
+#define PRODUCT_NAME "USBMSC"
 #define VOLUME_LABEL "ARDUINO"
 #define INDEX_URL "https://adafru.it/featherm0"
 #define BOARD_ID "SAMD21G18A-Arduino-v0"
