@@ -19,13 +19,13 @@ class Mtd
   public:
     Mtd() {
     }
-    MtdState getState() {
+    virtual MtdState getState() {
       return MtdState_Empty;
     }
-    uint32_t getCapacity() {
+    virtual uint32_t getCapacity() {
       return 0;
     }
-    uint32_t getBlockSize() {
+    virtual uint32_t getBlockSize() {
       return 512;
     }
 
@@ -38,7 +38,7 @@ class Mtd
      * \return return MtdRet_Ok if success,
      *         otherwise return an error code (\ref MtdRet).
      */
-    MtdRet initReadBlocks(uint32_t start, uint16_t nb_block) {
+    virtual MtdRet initReadBlocks(uint32_t start, uint16_t nb_block) {
       return MtdRet_NotImplemented;
     }
 
@@ -51,7 +51,7 @@ class Mtd
      * \return return MtdRet_Ok if started,
      *         otherwise return an error code (\ref MtdRet).
      */
-    MtdRet startReadBlocks(void *dest, uint16_t nb_block) {
+    virtual MtdRet startReadBlocks(void *dest, uint16_t nb_block) {
       return MtdRet_NotImplemented;
     }
 
@@ -65,7 +65,7 @@ class Mtd
      * \return return MtdRet_Ok if success,
      *         otherwise return an error code (\ref MtdRet).
      */
-    MtdRet waitEndOfReadBlocks(bool abort) {
+    virtual MtdRet waitEndOfReadBlocks(bool abort) {
       return MtdRet_NotImplemented;
     }
 
@@ -78,34 +78,34 @@ class Mtd
      * \return return MtdRet_Ok if success,
      *         otherwise return an error code (\ref MtdRet).
      */
-    MtdRet initWriteBlocks(uint32_t start, uint16_t nb_block) {
+    virtual MtdRet initWriteBlocks(uint32_t start, uint16_t nb_block) {
       return MtdRet_NotImplemented;
     }
 
     /**
-    * \brief Start the write blocks of data
-    *
-    * \param src      Pointer to write buffer.
-    * \param nb_block Number of blocks to be written.
-    *
-    * \return return MtdRet_Ok if started,
-    *         otherwise return an error code (\ref MtdRet).
-    */
-    MtdRet startWriteBlocks(const void *src, uint16_t nb_block) {
+     * \brief Start the write blocks of data
+     *
+     * \param src      Pointer to write buffer.
+     * \param nb_block Number of blocks to be written.
+     *
+     * \return return MtdRet_Ok if started,
+     *         otherwise return an error code (\ref MtdRet).
+     */
+    virtual MtdRet startWriteBlocks(const void *src, uint16_t nb_block) {
       return MtdRet_NotImplemented;
     }
 
     /**
-    * \brief Wait the end of write blocks of data
-    *
-    * \param abort Abort writing process initialized by
-    *              \ref initWriteBlocks() after the writing issued by
-    *              \ref startWriteBlocks() is done
-    *
-    * \return return MtdRet_Ok if success,
-    *         otherwise return an error code (\ref MtdRet).
-    */
-    MtdRet waitEndOfWriteBlocks(bool abort) {
+     * \brief Wait the end of write blocks of data
+     *
+     * \param abort Abort writing process initialized by
+     *              \ref initWriteBlocks() after the writing issued by
+     *              \ref startWriteBlocks() is done
+     *
+     * \return return MtdRet_Ok if success,
+     *         otherwise return an error code (\ref MtdRet).
+     */
+    virtual MtdRet waitEndOfWriteBlocks(bool abort) {
       return MtdRet_NotImplemented;
     }
 };
